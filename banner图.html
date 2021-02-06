@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+   
+</head>
+<script>
+     
+var Method=(function () {
+    return {
+        loadImage:function (arr,callback) {
+            var img=new Image();
+            img.arr=arr;
+            img.list=[];
+            img.num=0;
+            img.callback=callback;
+//            如果DOM对象下的事件侦听没有被删除掉，将会常驻堆中
+//            一旦触发了这个事件需要的条件，就会继续执行事件函数
+            img.addEventListener("load",this.loadHandler);
+            img.self=this;
+            img.src=arr[img.num];
+        },
+ 
+        loadHandler:function (e) {
+            this.list.push(this.cloneNode(false));
+            this.num++;
+            if(this.num>this.arr.length-1){
+                this.removeEventListener("load",this.self.loadHandler);
+                this.callback(this.list);
+                return;
+            }
+            this.src=this.arr[this.num];
+        },
+ 
+        $c:function (type,parent,style) {
+            var elem=document.createElement(type);
+            if(parent) parent.appendChild(elem);
+            for(var key in style){
+                elem.style[key]=style[key];
+            }
+            return elem;
+        }
+    }
+})();
+
+</script>
+<body>
+    <script>
+        var imgCon,ul,prevLi;
+        // var arr=["img/a.jpeg","img/b.jpeg","img/c.jpeg","img/d.jpeg","img/e.jpeg"];
+        var arr=["bk.png","bk3.png","bk2.png"];
+        var position=0;
+        var direction="";
+        var carouselBool=false;
+        var autoBool=false;
+        var time=240;
+        const WIDTH=800;
+        const HEIGHT=600;
+        init();
+        function init() {
+            createCarousel();
+            createLiAndImg();
+            changeLi();
+            setInterval(animation,16)
+        }
+ 
+        function createCarousel() {//创建默认的div模板 用于装图片
+            var carousel=Method.$c("div",document.body,{
+                width: WIDTH+"px",
+                height: HEIGHT+"px",
+                position: "relative",
+                margin: "auto",
+                overflow:"hidden"
+            });
+            carousel.addEventListener("mouseenter",mouseHandler);
+            carousel.addEventListener("mouseleave",mouseHandler);
+            imgCon=Method.$c("div",carousel,{//图片轮播 div
+                width: WIDTH+"px",
+                height: HEIGHT+"px",
+                position:"absolute",
+                left: 0,
+                fontSize: 0
+            });
+            ul=Method.$c("ul",carousel,{//装5个按钮的ul
+                position: "absolute",
+                bottom: "20px",
+                listStyle: "none",
+                margin: "auto"
+            });
+            var leftBn=Method.$c("img",carousel,{//左 按钮
+                position: "absolute",
+                left: "10px",
+                width:"50px",
+                top:"300px"
+            });
+            leftBn.src="left.png";
+            var rightBn=Method.$c("img",carousel,{//右 按钮
+                position: "absolute",
+                right: "10px",
+                width:"50px",
+                top:"300px"
+            });
+            rightBn.src="right.png";
+            leftBn.addEventListener("click",clickHandler);
+            rightBn.addEventListener("click",clickHandler)
+ 
+        }
+        function createLiAndImg() {
+            for(var i=0;i<arr.length;i++){//arr 事先装好了 5个图片
+                var li=Method.$c("li",ul,{//每个li的数据
+                    width: "20px",
+                    height: "20px",
+                    border:"1px solid red",
+                    borderRadius:"10px",
+                    float:"left",
+                    marginLeft:"8px"
+                });
+                li.num=i;
+                li.addEventListener("click",liClickHandler);
+            }
+            ul.style.left=(WIDTH-ul.offsetWidth)/2+"px";
+            var img=Method.$c("img",imgCon,{
+                width: WIDTH+"px",
+                height: HEIGHT+"px"
+            });
+            img.src=arr[position];
+        }
+ 
+        function mouseHandler(e) {
+            e = e || window.event;
+            if(e.type==="mouseenter"){//鼠标划上 自动暂停
+                autoBool=false;
+            }else if(e.type==="mouseleave"){//鼠标离开 自动开始
+                autoBool=true;
+            }
+        }
+ 
+        function clickHandler(e) {//左右button的键位判断 点击事件
+            e = e || window.event;
+            if(carouselBool) return;
+            if(~this.src.indexOf("left")){
+                position--;
+                if(position<0) position=arr.length-1;
+                direction="right";
+            }else{
+                position++;
+                if(position>arr.length-1) position=0;
+                direction="left";
+            }
+            createCarouselImg();
+        }
+ 
+        function liClickHandler(e) {
+            e = e || window.event;
+            if(carouselBool) return;
+            if(this.num===position) return;
+            if(this.num>position){
+                direction="left";
+            }else{
+                direction="right";
+            }
+            position=this.num;
+            createCarouselImg();
+        }
+        
+        function createCarouselImg() {
+            if(direction!=="left" && direction!=="right")return;
+            var img=Method.$c("img",null,{
+                width: WIDTH+"px",
+                height: HEIGHT+"px"
+            });
+            img.src=arr[position];
+            imgCon.style.width=WIDTH*2+"px";
+            if(direction==="left"){
+                imgCon.appendChild(img);
+            }else if(direction==="right"){
+                imgCon.insertBefore(img,imgCon.firstElementChild);
+                imgCon.style.left=-WIDTH+"px";
+            }
+            changeLi();
+            carouselBool=true;
+        }
+ 
+        function changeLi() {
+            if(prevLi){
+                prevLi.style.backgroundColor="rgba(255,0,0,0)";
+            }
+            prevLi=ul.children[position];
+            prevLi.style.backgroundColor="rgba(255,0,0,0.5)";
+        }
+        
+        function animation() {
+            carouselMovie();
+            carouselAuto();
+        }
+        
+        function carouselMovie() {
+            if(!carouselBool) return;
+            if(direction==="left"){
+                if(imgCon.offsetLeft<=-WIDTH){
+                    carouselBool=false;
+                    imgCon.firstElementChild.remove();
+                    imgCon.style.left="0px";
+                    return;
+                }
+                imgCon.style.left=imgCon.offsetLeft-40+"px";
+                return;
+            }
+            if(imgCon.offsetLeft>=0){
+               carouselBool=false;
+               imgCon.lastElementChild.remove();
+               return;
+            }
+            imgCon.style.left=imgCon.offsetLeft+30+"px";
+        }
+        /*
+        *   自动轮播函数
+        *   1、如果当前autoBool是false，就不进行自动轮播
+        *       这个变量是鼠标进入轮播图时是false，离开时
+        *       才会变化为false
+        *    2、让time--，因为这个函数没16毫秒执行一次，如果
+        *    每次进来就让time-1，然后判断time是否小于等于0，如果
+        *    小于等于0，说明这个函数已经进入了240次，每次16毫米，
+        *    合计就是4秒钟。这样可以控制让轮播图每4秒自动播放下张
+        *    图片
+        *    3、如果time小于等于0，就重新让time等于240，等待下次进入
+        *    4、设置图片播放定位+1，如果大于了图片的数量，就让它为0
+        *    5、设置轮播图方向是向左运动
+        *    6、执行创建轮播图片，并且继续后面的任务
+        *
+        *
+        *
+        * */
+        function carouselAuto() {
+            if(!autoBool)return;
+            time--;
+            if(time>0)return;
+            //当time减到0时，就不继续减了，进入下面
+            time=240;
+            position++;
+            if(position>arr.length-1) position=0;
+            direction="left";
+            createCarouselImg();
+        }
+    </script>
+</body>
+</html>
